@@ -1,4 +1,4 @@
-from typing import Any, ClassVar
+from typing import Any
 from langchain.tools import BaseTool
 import sqlite3
 

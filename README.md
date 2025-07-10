@@ -1,6 +1,10 @@
 # Agentic RAG Chatbot
 
+
+
 A local agent-based retrieval-augmented generation (RAG) system that combines LLM capabilities with various tools for enhanced interaction.
+
+![Architecture Diagram](./Agentic%20RAG.png)
 
 ## Features
 

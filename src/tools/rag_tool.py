@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, ClassVar
+from typing import Any
 from langchain.tools import BaseTool
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OpenAIEmbeddings

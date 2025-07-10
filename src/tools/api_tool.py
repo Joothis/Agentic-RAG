@@ -1,4 +1,4 @@
-from typing import Dict, Any, ClassVar, Optional
+from typing import Dict, Optional
 from langchain.tools import BaseTool
 import requests
 
