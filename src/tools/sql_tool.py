@@ -1,15 +1,16 @@
-from typing import Any
-from langchain.tools import BaseTool
+from typing import Any, Optional
 import sqlite3
+from langchain.tools import BaseTool
 
 class SQLTool(BaseTool):
+    name: str = "sql_query"
     description: str = "Execute SQL queries on a SQLite database"
-    
+    db_path: Optional[str] = None
+    connection: Optional[sqlite3.Connection] = None
+
     def __init__(self, db_path: str):
         super().__init__()
-        self.name = "sql_query"
         self.db_path = db_path
-        self.connection = None
         self.initialize_connection()
     
     def initialize_connection(self):

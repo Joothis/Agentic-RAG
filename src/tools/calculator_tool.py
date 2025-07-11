@@ -3,10 +3,11 @@ from langchain.tools import BaseTool
 import numpy as np
 
 class CalculatorTool(BaseTool):
+    name: str = "calculator"
+    description: str = "Perform mathematical calculations"
+
     def __init__(self):
         super().__init__()
-        self.name = "calculator"
-        self.description = "Perform mathematical calculations"
        
     def _run(self, expression: str) -> Union[float, str]:
         """Evaluate a mathematical expression"""

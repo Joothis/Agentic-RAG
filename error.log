@@ -1,0 +1,2 @@
+C:\Users\jooth\Desktop\Projects\Agentic RAG\src\agent.py:48: LangChainDeprecationWarning: Please see the migration guide at: https://python.langchain.com/docs/versions/migrating_memory/
+  self.memory = ConversationBufferMemory(
