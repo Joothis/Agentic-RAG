@@ -46,4 +46,4 @@ class SQLTool(BaseTool):
 
     async def _arun(self, query: str) -> Any:
         """Async implementation of run"""
-        raise NotImplementedError("SQLTool does not support async")
+        return self._run(query)

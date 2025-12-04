@@ -4,80 +4,318 @@ from langchain.memory import ConversationBufferMemory
 from langchain_ollama import OllamaLLM
 from dotenv import load_dotenv
 import os
+import re
+import httpx
+from typing import Dict, List, Optional
+from dataclasses import dataclass
 
-from tools import RAGTool, SQLTool, CalculatorTool, APITool
+from src.tools import RAGTool, SQLTool, CalculatorTool, APITool
+
+# Default Ollama configuration
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "mistral")  # Changed from llama2 to mistral
+
+
+def check_ollama_connection(base_url: str = OLLAMA_BASE_URL) -> dict:
+    """Check if Ollama is running and return available models."""
+    try:
+        response = httpx.get(f"{base_url}/api/tags", timeout=5.0)
+        if response.status_code == 200:
+            data = response.json()
+            models = [m["name"] for m in data.get("models", [])]
+            return {"connected": True, "models": models}
+    except Exception as e:
+        return {"connected": False, "error": str(e), "models": []}
+    return {"connected": False, "models": []}
+
+
+def get_available_model(preferred_model: str = DEFAULT_MODEL) -> str:
+    """Get the best available model, falling back if preferred isn't available."""
+    status = check_ollama_connection()
+    if not status["connected"]:
+        raise ConnectionError(f"Cannot connect to Ollama at {OLLAMA_BASE_URL}. Is Ollama running?")
+
+    available = status["models"]
+    if not available:
+        raise ValueError("No models available in Ollama. Please pull a model first (e.g., 'ollama pull mistral')")
+
+    # Check if preferred model is available (handle tags like 'mistral:latest')
+    for model in available:
+        if model.startswith(preferred_model) or preferred_model in model:
+            return model.split(":")[0]  # Return base model name
+
+    # Fall back to first available model
+    print(f"⚠ Model '{preferred_model}' not found. Using '{available[0]}' instead.")
+    return available[0].split(":")[0]
+
+
+@dataclass
+class ThoughtStep:
+    """Represents a single step in the chain of thought."""
+    step_number: int
+    thought: str
+    action: Optional[str] = None
+    observation: Optional[str] = None
+    confidence: float = 0.0
+
+
+@dataclass
+class ReasoningTrace:
+    """Complete reasoning trace for a query."""
+    query: str
+    steps: List[ThoughtStep]
+    final_answer: str
+    total_confidence: float
+
+
+class ChainOfThoughtReasoner:
+    """Dedicated Chain-of-Thought reasoning engine."""
+
+    def __init__(self, llm):
+        self.llm = llm
+
+    async def reason(self, query: str, context: str = "") -> ReasoningTrace:
+        """Perform step-by-step reasoning on a query."""
+
+        cot_prompt = f"""
+You are an advanced reasoning agent. Think through this problem step by step.
+
+Query: {query}
+{f"Context: {context}" if context else ""}
+
+Follow this EXACT format for your reasoning:
+
+STEP 1: [Understand the question]
+Thought: What is being asked? What are the key components?
+Confidence: [0.0-1.0]
+
+STEP 2: [Break down the problem]
+Thought: What sub-problems need to be solved?
+Confidence: [0.0-1.0]
+
+STEP 3: [Identify information needed]
+Thought: What information do I need to answer this?
+Confidence: [0.0-1.0]
+
+STEP 4: [Analyze and reason]
+Thought: Based on available information, what conclusions can I draw?
+Confidence: [0.0-1.0]
+
+STEP 5: [Synthesize answer]
+Thought: How do I combine my reasoning into a coherent answer?
+Confidence: [0.0-1.0]
+
+FINAL_ANSWER: [Your complete answer based on the reasoning above]
+TOTAL_CONFIDENCE: [Average confidence 0.0-1.0]
+"""
+
+        response = await self.llm.ainvoke(cot_prompt)
+        return self._parse_reasoning_trace(query, response)
+
+    def _parse_reasoning_trace(self, query: str, response: str) -> ReasoningTrace:
+        """Parse the LLM response into a structured ReasoningTrace."""
+        steps = []
+
+        # Parse each step
+        step_pattern = r"STEP (\d+):.*?Thought: (.*?)(?:Confidence: ([\d.]+))?"
+        matches = re.findall(step_pattern, response, re.DOTALL | re.IGNORECASE)
+
+        for match in matches:
+            step_num = int(match[0]) if match[0] else len(steps) + 1
+            thought = match[1].strip() if match[1] else ""
+            confidence = float(match[2]) if match[2] else 0.5
+            steps.append(ThoughtStep(
+                step_number=step_num,
+                thought=thought,
+                confidence=min(max(confidence, 0.0), 1.0)
+            ))
+
+        # Parse final answer
+        final_match = re.search(r"FINAL_ANSWER:\s*(.*?)(?:TOTAL_CONFIDENCE|$)", response, re.DOTALL | re.IGNORECASE)
+        final_answer = final_match.group(1).strip() if final_match else response
+
+        # Parse total confidence
+        conf_match = re.search(r"TOTAL_CONFIDENCE:\s*([\d.]+)", response, re.IGNORECASE)
+        total_confidence = float(conf_match.group(1)) if conf_match else 0.5
+
+        return ReasoningTrace(
+            query=query,
+            steps=steps if steps else [ThoughtStep(1, response, confidence=0.5)],
+            final_answer=final_answer,
+            total_confidence=min(max(total_confidence, 0.0), 1.0)
+        )
+
 
 class SpecializedAgent:
-    def __init__(self, llm, tools, memory):
+    """Agent specialized for specific tasks with CoT-enhanced prompts."""
+
+    def __init__(self, llm, tools, memory, agent_type: str = "general"):
+        self.agent_type = agent_type
         self.agent = initialize_agent(
             tools=tools,
             llm=llm,
             agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
             memory=memory,
-            verbose=True
+            verbose=True,
+            handle_parsing_errors=True
         )
 
-    async def run(self, message: str) -> str:
-        return await self.agent.arun(input=message)
+    async def run(self, message: str, reasoning_context: str = "") -> str:
+        """Run the agent with optional reasoning context."""
+        enhanced_message = message
+        if reasoning_context:
+            enhanced_message = f"""
+Based on the following reasoning:
+{reasoning_context}
+
+Please execute: {message}
+"""
+        return await self.agent.arun(input=enhanced_message)
+
 
 class CriticAgent:
+    """Enhanced critic that evaluates both response quality and reasoning."""
+
     def __init__(self, llm):
         self.llm = llm
 
-    def evaluate(self, message: str, response: str) -> str:
-        prompt = f"""
-        Original query: {message}
-        Generated response: {response}
+    def evaluate(self, message: str, response: str, reasoning_trace: Optional[ReasoningTrace] = None) -> Dict:
+        """Evaluate response with reasoning quality assessment."""
 
-        Please evaluate the response for accuracy, relevance, and completeness.
-        If the response is good, say "ACCEPT".
-        Otherwise, provide feedback on how to improve it.
-        """
-        return self.llm.invoke(prompt)
+        reasoning_section = ""
+        if reasoning_trace:
+            steps_text = "\n".join([f"Step {s.step_number}: {s.thought} (confidence: {s.confidence})"
+                                   for s in reasoning_trace.steps])
+            reasoning_section = f"""
+Reasoning Steps Used:
+{steps_text}
+Overall Reasoning Confidence: {reasoning_trace.total_confidence}
+"""
+
+        prompt = f"""
+You are a critical evaluator. Assess the following response thoroughly.
+
+Original Query: {message}
+Generated Response: {response}
+{reasoning_section}
+
+Evaluate on these criteria (score 1-10 for each):
+
+1. ACCURACY: Is the information factually correct?
+2. RELEVANCE: Does it directly address the query?
+3. COMPLETENESS: Are all aspects of the query covered?
+4. REASONING_QUALITY: Is the logic sound and well-structured?
+5. CLARITY: Is the response clear and understandable?
+
+Provide your evaluation in this EXACT format:
+ACCURACY: [score]
+RELEVANCE: [score]
+COMPLETENESS: [score]
+REASONING_QUALITY: [score]
+CLARITY: [score]
+OVERALL_SCORE: [average score]
+VERDICT: [ACCEPT if overall >= 7, otherwise IMPROVE]
+FEEDBACK: [Specific improvements needed if VERDICT is IMPROVE]
+"""
+
+        result = self.llm.invoke(prompt)
+        return self._parse_evaluation(result)
+
+    def _parse_evaluation(self, response: str) -> Dict:
+        """Parse evaluation response into structured format."""
+        evaluation = {
+            "accuracy": 5,
+            "relevance": 5,
+            "completeness": 5,
+            "reasoning_quality": 5,
+            "clarity": 5,
+            "overall_score": 5,
+            "verdict": "IMPROVE",
+            "feedback": "",
+            "raw_response": response
+        }
+
+        patterns = {
+            "accuracy": r"ACCURACY:\s*(\d+)",
+            "relevance": r"RELEVANCE:\s*(\d+)",
+            "completeness": r"COMPLETENESS:\s*(\d+)",
+            "reasoning_quality": r"REASONING_QUALITY:\s*(\d+)",
+            "clarity": r"CLARITY:\s*(\d+)",
+            "overall_score": r"OVERALL_SCORE:\s*([\d.]+)",
+        }
+
+        for key, pattern in patterns.items():
+            match = re.search(pattern, response, re.IGNORECASE)
+            if match:
+                evaluation[key] = float(match.group(1))
+
+        verdict_match = re.search(r"VERDICT:\s*(ACCEPT|IMPROVE)", response, re.IGNORECASE)
+        if verdict_match:
+            evaluation["verdict"] = verdict_match.group(1).upper()
+
+        feedback_match = re.search(r"FEEDBACK:\s*(.*?)(?:$)", response, re.DOTALL | re.IGNORECASE)
+        if feedback_match:
+            evaluation["feedback"] = feedback_match.group(1).strip()
+
+        return evaluation
 
 class ManagerAgent:
-    def __init__(self, 
-                 model_name: str = "llama2",
+    """Basic manager agent for backward compatibility."""
+
+    def __init__(self,
+                 model_name: str = DEFAULT_MODEL,
                  temperature: float = 0.7,
                  documents_path: str = "./data/documents",
                  db_path: str = "./data/database.db"):
-        
+
         load_dotenv()
-        
-        self.llm = OllamaLLM(model=model_name, temperature=temperature)
-        
+
+        # Verify Ollama connection and get available model
+        actual_model = get_available_model(model_name)
+        print(f"✓ Initializing with Ollama model: {actual_model}")
+
+        self.llm = OllamaLLM(
+            model=actual_model,
+            temperature=temperature,
+            base_url=OLLAMA_BASE_URL
+        )
+
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True
         )
-        
+
         self.retrieval_agent = SpecializedAgent(
             llm=self.llm,
             tools=[RAGTool(documents_path=documents_path)],
-            memory=self.memory
+            memory=self.memory,
+            agent_type="retrieval"
         )
         self.generative_agent = SpecializedAgent(
             llm=self.llm,
             tools=[SQLTool(db_path=db_path), CalculatorTool(), APITool()],
-            memory=self.memory
+            memory=self.memory,
+            agent_type="generative"
         )
         self.critic_agent = CriticAgent(llm=self.llm)
 
     async def chat(self, message: str) -> str:
         try:
             decomposed_query = await self._decompose_query(message)
-            
+
             retrieval_results = await self.retrieval_agent.run(decomposed_query["retrieval"])
-            
-            response = await self.generative_agent.run(decomposed_query["generative"].format(retrieved_info=retrieval_results))
-            
-            for _ in range(3):  # Allow for up to 3 rounds of refinement
+
+            response = await self.generative_agent.run(
+                decomposed_query["generative"].format(retrieved_info=retrieval_results)
+            )
+
+            for _ in range(3):
                 evaluation = self.critic_agent.evaluate(message, response)
-                if "ACCEPT" in evaluation:
+                if evaluation.get("verdict") == "ACCEPT" or "ACCEPT" in str(evaluation):
                     break
-                
+
                 response = await self.generative_agent.run(
-                    f"Based on the retrieved information and the following feedback, please provide a new response: {evaluation}"
+                    f"Based on the feedback, improve your response: {evaluation.get('feedback', evaluation)}"
                 )
 
             return response
@@ -92,17 +330,227 @@ class ManagerAgent:
 
         Query: {message}
         """
-        
+
         decomposed_query_str = await self.llm.ainvoke(prompt)
-        
-        # This is a simple parsing method. A more robust solution would use structured output.
-        retrieval_part = decomposed_query_str.split("generative:")[0].replace("retrieval:", "").strip()
-        generative_part = decomposed_query_str.split("generative:")[1].strip()
+
+        try:
+            retrieval_part = decomposed_query_str.split("generative:")[0].replace("retrieval:", "").strip()
+            generative_part = decomposed_query_str.split("generative:")[1].strip()
+        except IndexError:
+            retrieval_part = message
+            generative_part = "Answer based on: {retrieved_info}"
 
         return {
             "retrieval": retrieval_part,
             "generative": generative_part
         }
 
-class AgenticRAG(ManagerAgent):
+
+class AdvancedAgenticRAG(ManagerAgent):
+    """
+    Advanced Agentic RAG with Chain-of-Thought reasoning.
+
+    Features:
+    - Step-by-step reasoning before actions
+    - Confidence scoring for each reasoning step
+    - Enhanced evaluation with reasoning quality metrics
+    - Iterative refinement based on structured feedback
+    """
+
+    def __init__(self,
+                 model_name: str = "llama2",
+                 temperature: float = 0.7,
+                 documents_path: str = "./data/documents",
+                 db_path: str = "./data/database.db",
+                 max_refinements: int = 3,
+                 min_confidence_threshold: float = 0.6):
+
+        super().__init__(model_name, temperature, documents_path, db_path)
+
+        # Advanced components
+        self.reasoner = ChainOfThoughtReasoner(self.llm)
+        self.max_refinements = max_refinements
+        self.min_confidence_threshold = min_confidence_threshold
+
+        # Track reasoning history for the session
+        self.reasoning_history: List[ReasoningTrace] = []
+
+    async def chat(self, message: str) -> str:
+        """
+        Process a message with full Chain-of-Thought reasoning pipeline.
+
+        Flow:
+        1. Initial CoT reasoning on the query
+        2. Decompose query based on reasoning
+        3. Retrieve information with reasoning context
+        4. Generate response with reasoning context
+        5. Evaluate response and reasoning quality
+        6. Refine if needed (up to max_refinements)
+        """
+        try:
+            # Step 1: Initial Chain-of-Thought reasoning
+            reasoning_trace = await self.reasoner.reason(message)
+            self.reasoning_history.append(reasoning_trace)
+
+            # Check if confidence is too low - might need clarification
+            if reasoning_trace.total_confidence < self.min_confidence_threshold:
+                clarification = await self._request_clarification(message, reasoning_trace)
+                if clarification:
+                    return clarification
+
+            # Step 2: Decompose query with reasoning context
+            decomposed_query = await self._decompose_query_with_reasoning(message, reasoning_trace)
+
+            # Step 3: Retrieve information with reasoning context
+            reasoning_context = self._format_reasoning_for_context(reasoning_trace)
+            retrieval_results = await self.retrieval_agent.run(
+                decomposed_query["retrieval"],
+                reasoning_context=reasoning_context
+            )
+
+            # Step 4: Generate initial response
+            generation_prompt = decomposed_query["generative"].format(
+                retrieved_info=retrieval_results
+            )
+            response = await self.generative_agent.run(
+                generation_prompt,
+                reasoning_context=reasoning_context
+            )
+
+            # Step 5 & 6: Evaluate and refine
+            response = await self._evaluate_and_refine(
+                message, response, reasoning_trace, retrieval_results
+            )
+
+            return response
+
+        except Exception as e:
+            return f"Error in advanced reasoning pipeline: {str(e)}"
+
+    async def _decompose_query_with_reasoning(self, message: str, reasoning_trace: ReasoningTrace) -> dict:
+        """Decompose query using insights from CoT reasoning."""
+
+        steps_summary = "\n".join([f"- {s.thought}" for s in reasoning_trace.steps[:3]])
+
+        prompt = f"""
+Based on the following step-by-step reasoning about the query:
+
+{steps_summary}
+
+Now decompose the original query into specific tasks:
+
+Query: {message}
+
+Think step by step:
+1. What specific information needs to be RETRIEVED from documents/databases?
+2. What GENERATIVE task needs to be performed with that information?
+
+Respond in this EXACT format:
+RETRIEVAL_TASK: [Specific search/query to retrieve needed information]
+GENERATIVE_TASK: [Task to perform using retrieved info, use {{retrieved_info}} as placeholder]
+"""
+
+        response = await self.llm.ainvoke(prompt)
+
+        # Parse the response
+        retrieval_match = re.search(r"RETRIEVAL_TASK:\s*(.*?)(?:GENERATIVE_TASK|$)", response, re.DOTALL | re.IGNORECASE)
+        generative_match = re.search(r"GENERATIVE_TASK:\s*(.*?)$", response, re.DOTALL | re.IGNORECASE)
+
+        retrieval_part = retrieval_match.group(1).strip() if retrieval_match else message
+        generative_part = generative_match.group(1).strip() if generative_match else "Answer based on: {retrieved_info}"
+
+        return {
+            "retrieval": retrieval_part,
+            "generative": generative_part
+        }
+
+    async def _evaluate_and_refine(self, message: str, response: str,
+                                   reasoning_trace: ReasoningTrace,
+                                   retrieval_results: str) -> str:
+        """Evaluate response and refine using structured feedback."""
+
+        for iteration in range(self.max_refinements):
+            # Evaluate with reasoning context
+            evaluation = self.critic_agent.evaluate(message, response, reasoning_trace)
+
+            # Check if response is acceptable
+            if evaluation["verdict"] == "ACCEPT" or evaluation["overall_score"] >= 7:
+                break
+
+            # Generate refined response based on structured feedback
+            refinement_prompt = f"""
+Your previous response needs improvement.
+
+Original Query: {message}
+Your Previous Response: {response}
+
+Evaluation Scores:
+- Accuracy: {evaluation['accuracy']}/10
+- Relevance: {evaluation['relevance']}/10
+- Completeness: {evaluation['completeness']}/10
+- Reasoning Quality: {evaluation['reasoning_quality']}/10
+- Clarity: {evaluation['clarity']}/10
+
+Specific Feedback: {evaluation['feedback']}
+
+Retrieved Information Available: {retrieval_results[:500]}...
+
+Please provide an improved response that addresses the feedback.
+Think step by step about how to improve each weak area.
+"""
+
+            response = await self.generative_agent.run(refinement_prompt)
+
+        return response
+
+    async def _request_clarification(self, message: str, reasoning_trace: ReasoningTrace) -> Optional[str]:
+        """Request clarification if confidence is too low."""
+
+        low_confidence_steps = [s for s in reasoning_trace.steps if s.confidence < 0.5]
+
+        if not low_confidence_steps:
+            return None
+
+        unclear_aspects = "\n".join([f"- {s.thought}" for s in low_confidence_steps])
+
+        clarification_prompt = f"""
+I want to give you the best possible answer, but I'm uncertain about some aspects of your question.
+
+Your question: {message}
+
+I'm uncertain about:
+{unclear_aspects}
+
+Could you please clarify or provide more context about what you're looking for?
+"""
+        return clarification_prompt
+
+    def _format_reasoning_for_context(self, reasoning_trace: ReasoningTrace) -> str:
+        """Format reasoning trace as context for other agents."""
+
+        steps_text = "\n".join([
+            f"Step {s.step_number}: {s.thought}"
+            for s in reasoning_trace.steps
+        ])
+
+        return f"""
+Reasoning Analysis:
+{steps_text}
+
+Key Insight: {reasoning_trace.final_answer[:200] if reasoning_trace.final_answer else 'N/A'}
+Confidence: {reasoning_trace.total_confidence:.2f}
+"""
+
+    def get_reasoning_history(self) -> List[ReasoningTrace]:
+        """Get the full reasoning history for the session."""
+        return self.reasoning_history
+
+    def clear_reasoning_history(self):
+        """Clear the reasoning history."""
+        self.reasoning_history = []
+
+
+# Backward compatibility alias
+class AgenticRAG(AdvancedAgenticRAG):
+    """Alias for AdvancedAgenticRAG for backward compatibility."""
     pass

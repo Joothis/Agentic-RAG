@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agentic RAG Chatbot</title>
+    <title>Advanced Agentic RAG Chatbot</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -20,8 +20,8 @@
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 400px;
-            height: 600px;
+            max-width: 500px;
+            height: 700px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -37,6 +37,12 @@
             border-top-right-radius: 10px;
         }
 
+        .chat-header .subtitle {
+            font-size: 0.7em;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
         .chat-messages {
             flex-grow: 1;
             padding: 20px;
@@ -46,13 +52,13 @@
         }
 
         .message {
-            max-width: 80%;
+            max-width: 85%;
             padding: 10px 15px;
             border-radius: 18px;
             margin-bottom: 10px;
             line-height: 1.4;
-            opacity: 0; /* Start hidden for animation */
-            transform: translateY(20px); /* Start below for slide-up */
+            opacity: 0;
+            transform: translateY(20px);
             animation: fadeInSlideUp 0.3s ease-out forwards;
         }
 
@@ -70,10 +76,91 @@
             border-bottom-left-radius: 2px;
         }
 
+        .message.thinking {
+            align-self: flex-start;
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            font-style: italic;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Thinking animation */
+        .thinking-dots {
+            display: inline-block;
+        }
+
+        .thinking-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Reasoning display */
+        .reasoning-toggle {
+            font-size: 0.75em;
+            color: #666;
+            cursor: pointer;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .reasoning-toggle:hover {
+            color: #4CAF50;
+        }
+
+        .reasoning-steps {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+
+        .reasoning-steps.visible {
+            display: block;
+        }
+
+        .reasoning-step {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .reasoning-step:last-child {
+            border-bottom: none;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
+
+        .confidence-high { background-color: #d4edda; color: #155724; }
+        .confidence-medium { background-color: #fff3cd; color: #856404; }
+        .confidence-low { background-color: #f8d7da; color: #721c24; }
+
         .chat-input {
             display: flex;
             padding: 15px;
             border-top: 1px solid #eee;
+            gap: 10px;
         }
 
         .chat-input input {
@@ -85,32 +172,37 @@
             outline: none;
         }
 
+        .chat-input input:focus {
+            border-color: #4CAF50;
+        }
+
+        .chat-input input:disabled {
+            background-color: #f5f5f5;
+        }
+
         .chat-input button {
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 20px;
-            padding: 10px 15px;
-            margin-left: 10px;
+            padding: 10px 20px;
             cursor: pointer;
             font-size: 1em;
             transition: background-color 0.2s ease;
         }
 
-        .chat-input button:hover {
+        .chat-input button:hover:not(:disabled) {
             background-color: #45a049;
         }
 
-        /* Animation Keyframes */
+        .chat-input button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
         @keyframes fadeInSlideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* Responsive adjustments */
@@ -118,51 +210,33 @@
             .chat-container {
                 width: 95%;
                 height: 90vh;
-                max-width: none; /* Remove max-width for smaller screens */
+                max-width: none;
             }
         }
 
         @media (max-width: 480px) {
-            .chat-header {
-                font-size: 1em;
-                padding: 10px;
-            }
-
-            .chat-messages {
-                padding: 10px;
-            }
-
-            .message {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
-
-            .chat-input {
-                padding: 10px;
-            }
-
-            .chat-input input {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
-
-            .chat-input button {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
+            .chat-header { font-size: 1em; padding: 10px; }
+            .chat-messages { padding: 10px; }
+            .message { padding: 8px 12px; font-size: 0.9em; }
+            .chat-input { padding: 10px; }
+            .chat-input input { padding: 8px 12px; font-size: 0.9em; }
+            .chat-input button { padding: 8px 12px; font-size: 0.9em; }
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            Agentic RAG Chatbot
+            🧠 Advanced Agentic RAG
         </div>
         <div class="chat-messages" id="chat-messages">
-            <div class="message bot">Hello! I'm the Agentic RAG Chatbot. How can I assist you with your RAG queries today?</div>
+            <div class="message bot">
+                Hello! I'm an Advanced Agentic RAG Chatbot.<br />
+                How can I help you today?
+            </div>
         </div>
         <div class="chat-input">
-            <input type="text" id="user-input" placeholder="Type your message...">
+            <input type="text" id="user-input" placeholder="Ask me anything...">
             <button id="send-button">Send</button>
         </div>
     </div>
@@ -171,46 +245,134 @@
         const chatMessages = document.getElementById('chat-messages');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
+        let isProcessing = false;
 
-        function addMessage(text, sender) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', sender);
-            messageDiv.textContent = text;
-            chatMessages.appendChild(messageDiv);
-
-            // Scroll to the bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+        function getConfidenceClass(confidence) {
+            if (confidence >= 0.7) return 'confidence-high';
+            if (confidence >= 0.4) return 'confidence-medium';
+            return 'confidence-low';
         }
 
-        sendButton.addEventListener('click', async () => {
+        function addMessage(text, sender, reasoning = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+
+            // Main message text
+            const textSpan = document.createElement('span');
+            textSpan.textContent = text;
+            messageDiv.appendChild(textSpan);
+
+            // Add reasoning toggle if available
+            if (reasoning && reasoning.length > 0) {
+                const toggleDiv = document.createElement('div');
+                toggleDiv.classList.add('reasoning-toggle');
+                toggleDiv.innerHTML = '🔍 Show reasoning steps';
+
+                const reasoningDiv = document.createElement('div');
+                reasoningDiv.classList.add('reasoning-steps');
+
+                reasoning.forEach(step => {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.classList.add('reasoning-step');
+                    const confClass = getConfidenceClass(step.confidence);
+                    stepDiv.innerHTML = `
+                        <strong>Step ${step.step_number}:</strong> ${step.thought}
+                        <span class="confidence-badge ${confClass}">${(step.confidence * 100).toFixed(0)}%</span>
+                    `;
+                    reasoningDiv.appendChild(stepDiv);
+                });
+
+                toggleDiv.addEventListener('click', () => {
+                    reasoningDiv.classList.toggle('visible');
+                    toggleDiv.innerHTML = reasoningDiv.classList.contains('visible')
+                        ? '🔍 Hide reasoning steps'
+                        : '🔍 Show reasoning steps';
+                });
+
+                messageDiv.appendChild(toggleDiv);
+                messageDiv.appendChild(reasoningDiv);
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            return messageDiv;
+        }
+
+        function addThinkingMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'thinking');
+            messageDiv.id = 'thinking-message';
+            messageDiv.innerHTML = '🤔 Thinking<span class="thinking-dots"></span>';
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        function removeThinkingMessage() {
+            const thinking = document.getElementById('thinking-message');
+            if (thinking) thinking.remove();
+        }
+
+        function setProcessing(processing) {
+            isProcessing = processing;
+            userInput.disabled = processing;
+            sendButton.disabled = processing;
+            sendButton.textContent = processing ? '...' : 'Send';
+        }
+
+        async function sendMessage() {
             const messageText = userInput.value.trim();
-            if (messageText) {
-                addMessage(messageText, 'user');
-                userInput.value = '';
+            if (!messageText || isProcessing) return;
 
-                try {
-                    const response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ message: messageText }),
-                    });
+            addMessage(messageText, 'user');
+            userInput.value = '';
+            setProcessing(true);
+            addThinkingMessage();
 
-                    const data = await response.json();
-                    addMessage(data.response, 'bot');
-                } catch (error) {
-                    console.error('Error:', error);
-                    addMessage('Sorry, something went wrong. Please try again.', 'bot');
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: messageText,
+                        include_reasoning: true
+                    }),
+                });
+
+                const data = await response.json();
+                removeThinkingMessage();
+
+                if (data.status === 'error') {
+                    const errorDiv = addMessage(data.response, 'bot');
+                    errorDiv.classList.add('error');
+                } else {
+                    addMessage(data.response, 'bot', data.reasoning_steps);
                 }
+            } catch (error) {
+                console.error('Error:', error);
+                removeThinkingMessage();
+                const errorDiv = addMessage('Sorry, something went wrong. Please try again.', 'bot');
+                errorDiv.classList.add('error');
+            } finally {
+                setProcessing(false);
             }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
 
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendButton.click();
-            }
-        });
+        // Health check on load
+        fetch('/health')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'healthy') {
+                    addMessage('⚠️ Warning: Agent is not fully initialized. Some features may not work.', 'bot');
+                }
+            })
+            .catch(() => {});
     </script>
 </body>
 </html>

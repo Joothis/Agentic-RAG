@@ -62,4 +62,4 @@ class APITool(BaseTool):
 
     async def _arun(self, params: str) -> str:
         """Async implementation of run"""
-        raise NotImplementedError("APITool does not support async")
+        return self._run(params)
