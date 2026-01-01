@@ -3,214 +3,482 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agentic RAG Chatbot</title>
+    <title>Agentic RAG - AI Research Assistant</title>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
         }
 
-        .chat-container {
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            height: 600px;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .app-container {
             display: flex;
             flex-direction: column;
+            height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            background: linear-gradient(45deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
             overflow: hidden;
         }
 
-        .chat-header {
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 1.2em;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
+        .chat-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .insights-section {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
         }
 
         .chat-messages {
-            flex-grow: 1;
+            flex: 1;
             padding: 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            gap: 15px;
         }
 
         .message {
-            max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 18px;
-            margin-bottom: 10px;
-            line-height: 1.4;
-            opacity: 0; /* Start hidden for animation */
-            transform: translateY(20px); /* Start below for slide-up */
-            animation: fadeInSlideUp 0.3s ease-out forwards;
+            max-width: 85%;
+            padding: 12px 18px;
+            border-radius: 16px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .message.user {
             align-self: flex-end;
-            background-color: #DCF8C6;
-            color: #333;
-            border-bottom-right-radius: 2px;
+            background: linear-gradient(135deg, #7c3aed, #5b21b6);
+            color: white;
+            border-bottom-right-radius: 4px;
         }
 
         .message.bot {
             align-self: flex-start;
-            background-color: #E0E0E0;
-            color: #333;
-            border-bottom-left-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.bot .quality-badge {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 2px 8px;
+            font-size: 0.75em;
+            border-radius: 10px;
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
         }
 
         .chat-input {
-            display: flex;
-            padding: 15px;
-            border-top: 1px solid #eee;
-        }
-
-        .chat-input input {
-            flex-grow: 1;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            padding: 10px 15px;
+            flex: 1;
+            padding: 15px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
             font-size: 1em;
             outline: none;
+            transition: border-color 0.3s;
         }
 
-        .chat-input button {
-            background-color: #4CAF50;
-            color: white;
+        .chat-input:focus {
+            border-color: #7c3aed;
+        }
+
+        .chat-input::placeholder {
+            color: #888;
+        }
+
+        .send-btn {
+            padding: 15px 25px;
             border: none;
-            border-radius: 20px;
-            padding: 10px 15px;
-            margin-left: 10px;
-            cursor: pointer;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #7c3aed, #5b21b6);
+            color: white;
             font-size: 1em;
-            transition: background-color 0.2s ease;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .chat-input button:hover {
-            background-color: #45a049;
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(124, 58, 237, 0.4);
         }
 
-        /* Animation Keyframes */
-        @keyframes fadeInSlideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .chat-container {
-                width: 95%;
-                height: 90vh;
-                max-width: none; /* Remove max-width for smaller screens */
-            }
+        .insights-section h2 {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        @media (max-width: 480px) {
-            .chat-header {
-                font-size: 1em;
-                padding: 10px;
-            }
+        .insights-section h2::before {
+            content: '📊';
+        }
 
-            .chat-messages {
-                padding: 10px;
-            }
+        .insight-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-            .message {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
+        .insight-card h3 {
+            font-size: 0.9em;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
 
-            .chat-input {
-                padding: 10px;
-            }
+        .insight-card .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.85em;
+        }
 
-            .chat-input input {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
+        .insight-card .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+        }
 
-            .chat-input button {
-                padding: 8px 12px;
-                font-size: 0.9em;
+        .tools-section {
+            margin-top: 20px;
+        }
+
+        .tool-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            margin: 3px;
+            font-size: 0.75em;
+            border-radius: 12px;
+            background: rgba(124, 58, 237, 0.2);
+            color: #a78bfa;
+        }
+
+        .refresh-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #7c3aed;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .topics-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .topic-tag {
+            padding: 3px 8px;
+            font-size: 0.75em;
+            border-radius: 8px;
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .insights-section {
+                max-height: 200px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            Agentic RAG Chatbot
+    <div class="app-container">
+        <div class="header">
+            <h1>🤖 Agentic RAG System</h1>
+            <div class="subtitle">AI-Powered Research Assistant with MCP Integration | Powered by OpenRouter</div>
         </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot">Hello! I'm the Agentic RAG Chatbot. How can I assist you with your RAG queries today?</div>
-        </div>
-        <div class="chat-input">
-            <input type="text" id="user-input" placeholder="Type your message...">
-            <button id="send-button">Send</button>
+        
+        <div class="main-content">
+            <div class="chat-section">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot">
+                        👋 Hello! I'm your AI Research Assistant powered by DeepSeek V3. I can help you:
+                        <br><br>
+                        • 📚 Search and analyze documents (RAG)
+                        • 🔢 Perform calculations
+                        • 🗃️ Query databases
+                        • 🌐 Call external APIs
+                        • 📊 Generate insights from data
+                        <br><br>
+                        What would you like to explore today?
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="user-input" placeholder="Ask me anything..." autocomplete="off">
+                    <button class="send-btn" id="send-btn">Send</button>
+                </div>
+            </div>
+            
+            <div class="insights-section">
+                <h2>Live Insights</h2>
+                
+                <div class="insight-card" id="stats-card">
+                    <h3>📈 Session Statistics</h3>
+                    <div class="stat">
+                        <span>Total Queries</span>
+                        <span class="stat-value" id="total-queries">0</span>
+                    </div>
+                    <div class="stat">
+                        <span>Avg Response Length</span>
+                        <span class="stat-value" id="avg-length">-</span>
+                    </div>
+                    <div class="stat">
+                        <span>Sources Used</span>
+                        <span class="stat-value" id="sources-used">0</span>
+                    </div>
+                </div>
+                
+                <div class="insight-card" id="analysis-card">
+                    <h3>🎯 Topic Analysis</h3>
+                    <div class="topics-list" id="topics-list">
+                        <span class="topic-tag">Start chatting to see topics</span>
+                    </div>
+                </div>
+                
+                <div class="insight-card" id="recommendations-card">
+                    <h3>💡 Recommendations</h3>
+                    <div id="recommendations">
+                        <p style="font-size: 0.85em; color: #888;">Insights will appear as you interact with the system.</p>
+                    </div>
+                </div>
+                
+                <div class="tools-section">
+                    <h3 style="font-size: 0.9em; margin-bottom: 10px;">🔧 Available Tools</h3>
+                    <div id="tools-list">
+                        <span class="tool-badge">Loading...</span>
+                    </div>
+                </div>
+                
+                <button class="refresh-btn" id="refresh-insights">🔄 Refresh Insights</button>
+            </div>
         </div>
     </div>
 
     <script>
         const chatMessages = document.getElementById('chat-messages');
         const userInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
+        const sendBtn = document.getElementById('send-btn');
+        let queryCount = 0;
 
-        function addMessage(text, sender) {
+        function addMessage(text, sender, qualityScore = null) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', sender);
-            messageDiv.textContent = text;
+            
+            let content = text;
+            if (sender === 'bot' && qualityScore !== null) {
+                content += `<div class="quality-badge">Quality Score: ${qualityScore}/10</div>`;
+            }
+            
+            messageDiv.innerHTML = content;
             chatMessages.appendChild(messageDiv);
-
-            // Scroll to the bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        sendButton.addEventListener('click', async () => {
+        function addLoadingMessage() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.classList.add('message', 'bot');
+            loadingDiv.id = 'loading-message';
+            loadingDiv.innerHTML = '<div class="loading"></div> Thinking...';
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeLoadingMessage() {
+            const loadingMsg = document.getElementById('loading-message');
+            if (loadingMsg) loadingMsg.remove();
+        }
+
+        async function sendMessage() {
             const messageText = userInput.value.trim();
-            if (messageText) {
-                addMessage(messageText, 'user');
-                userInput.value = '';
+            if (!messageText) return;
 
-                try {
-                    const response = await fetch('/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ message: messageText }),
-                    });
+            addMessage(messageText, 'user');
+            userInput.value = '';
+            sendBtn.disabled = true;
+            addLoadingMessage();
 
-                    const data = await response.json();
-                    addMessage(data.response, 'bot');
-                } catch (error) {
-                    console.error('Error:', error);
-                    addMessage('Sorry, something went wrong. Please try again.', 'bot');
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: messageText, with_critique: true }),
+                });
+
+                const data = await response.json();
+                removeLoadingMessage();
+                
+                const qualityScore = data.evaluation?.quality_score || null;
+                addMessage(data.response, 'bot', qualityScore);
+                
+                queryCount++;
+                document.getElementById('total-queries').textContent = queryCount;
+                
+                // Refresh insights after each message
+                if (queryCount % 3 === 0) {
+                    fetchInsights();
                 }
+            } catch (error) {
+                removeLoadingMessage();
+                addMessage('Sorry, an error occurred. Please try again.', 'bot');
+                console.error('Error:', error);
             }
-        });
 
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendButton.click();
+            sendBtn.disabled = false;
+        }
+
+        async function fetchInsights() {
+            try {
+                const response = await fetch('/insights');
+                const data = await response.json();
+                
+                if (data.statistics) {
+                    document.getElementById('total-queries').textContent = data.statistics.total_queries || queryCount;
+                    document.getElementById('avg-length').textContent = data.statistics.average_response_length || '-';
+                    document.getElementById('sources-used').textContent = data.statistics.unique_sources_used || 0;
+                }
+                
+                if (data.analysis?.main_topics) {
+                    const topicsList = document.getElementById('topics-list');
+                    topicsList.innerHTML = data.analysis.main_topics
+                        .slice(0, 5)
+                        .map(topic => `<span class="topic-tag">${topic}</span>`)
+                        .join('');
+                }
+                
+                if (data.analysis?.recommendations) {
+                    const recsDiv = document.getElementById('recommendations');
+                    recsDiv.innerHTML = data.analysis.recommendations
+                        .slice(0, 3)
+                        .map(rec => `<p style="font-size: 0.85em; margin-bottom: 8px;">• ${rec}</p>`)
+                        .join('');
+                }
+            } catch (error) {
+                console.error('Error fetching insights:', error);
             }
+        }
+
+        async function fetchTools() {
+            try {
+                const response = await fetch('/tools');
+                const data = await response.json();
+                
+                const toolsList = document.getElementById('tools-list');
+                if (data.tools && data.tools.length > 0) {
+                    toolsList.innerHTML = data.tools
+                        .map(tool => `<span class="tool-badge" title="${tool.description}">${tool.name}</span>`)
+                        .join('');
+                } else {
+                    toolsList.innerHTML = '<span class="tool-badge">No tools loaded</span>';
+                }
+            } catch (error) {
+                console.error('Error fetching tools:', error);
+            }
+        }
+
+        // Event Listeners
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
+        document.getElementById('refresh-insights').addEventListener('click', fetchInsights);
+
+        // Initial load
+        fetchTools();
     </script>
 </body>
 </html>

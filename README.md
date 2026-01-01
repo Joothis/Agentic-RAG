@@ -1,106 +1,203 @@
-# Agentic RAG Chatbot
+# 🤖 Agentic RAG System
 
-A local agent-based retrieval-augmented generation (RAG) system that combines LLM capabilities with various tools for enhanced interaction.
+An advanced AI-powered research assistant that combines **Retrieval-Augmented Generation (RAG)** with **Model Context Protocol (MCP)** integration. Powered by **OpenRouter's free LLM models** (DeepSeek V3), this system provides intelligent document analysis with meaningful insights.
 
 ![Architecture Diagram](./Agentic%20RAG.png)
 
-## Features
+## ✨ Key Features
 
-- **Web Interface**: A user-friendly web interface for interacting with the chatbot.
-- **Multi-Agent System**: A manager agent that coordinates specialized agents for retrieval, generation, and evaluation.
-- **Iterative Refinement**: A critic agent that evaluates and provides feedback on generated responses.
-- **Advanced Query Decomposition**: The manager agent decomposes complex queries into sub-queries for specialized agents.
-- **RAG search using vector store (Chroma)**: With document loading and indexing.
-- **SQL database querying**
-- **Calculator for mathematical operations**
-- **External API calling capabilities**: With robust parameter parsing and authentication.
-- **Conversational memory for context retention**
+### 🧠 AI-Powered Analysis
+- **OpenRouter Integration**: Access to top free models (DeepSeek V3, Llama 3.3 70B)
+- **Multi-Agent Architecture**: Manager, Retrieval, Generative, and Critic agents
+- **Quality Assurance**: Built-in response evaluation and refinement
 
-## Setup
+### 📊 Meaningful Insights
+- **Usage Analytics**: Track query patterns and response quality
+- **Topic Analysis**: Automatic identification of discussion themes
+- **Trend Detection**: Identify patterns in user queries
+- **Recommendations**: AI-generated suggestions for knowledge base improvements
 
-### Local Installation
+### 🔧 MCP (Model Context Protocol)
+- **Standardized Tool Interface**: JSON-RPC based tool orchestration
+- **Resource Management**: Dynamic resource discovery and access
+- **Prompt Templates**: Pre-configured prompts for common tasks
 
-1. Create a virtual environment:
+### 🛠️ Available Tools
+1. **RAG Search**: Vector similarity search through documents
+2. **SQL Query**: Execute queries on SQLite databases
+3. **Calculator**: Mathematical operations and expressions
+4. **API Caller**: HTTP requests to external APIs
+5. **Insights Analyzer**: Statistical and trend analysis
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.9+
+- OpenRouter API Key (free tier available)
+
+### Installation
+
+1. **Clone and setup environment:**
 ```bash
+git clone <repo-url>
+cd Agentic-RAG
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
-
-```bash
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. **Install Ollama and Download a Model**:
-   - Download and install Ollama from [https://ollama.com/](https://ollama.com/) for your operating system.
-   - After installation, open your terminal/command prompt and download a model. For example, to download Llama 2, run: `ollama run llama2` (You can also choose other models like `mistral` by running `ollama run mistral`).
-
-4. Create the necessary data directories:
-
+2. **Configure environment:**
 ```bash
-mkdir -p data/documents
+# .env file is pre-configured with your API key
+# Optionally modify MODEL_NAME for different models:
+# - deepseek/deepseek-chat-v3-0324:free (Best reasoning)
+# - meta-llama/llama-3.3-70b-instruct:free (Great balance)
+# - google/gemma-2-9b-it:free (Fast responses)
 ```
 
-### Docker Installation
-
-1. **Build the Docker image:**
-
+3. **Create data directories:**
 ```bash
-docker build -t agentic-rag .
+mkdir -p data/documents data/vector_store
 ```
 
-2. **Run the Docker container:**
-
+4. **Run the application:**
 ```bash
-docker run -p 8000:8000 agentic-rag
+cd src
+python main.py
 ```
 
-## Usage
+5. **Open your browser:**
+```
+http://localhost:8000
+```
 
-### Local
+## 📡 API Endpoints
 
-Run the chatbot using:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Web interface |
+| `/chat` | POST | Send messages to AI |
+| `/insights` | GET | Get usage analytics |
+| `/tools` | GET | List available tools |
+| `/mcp` | POST | MCP protocol endpoint |
+| `/health` | GET | Health check |
+| `/docs` | GET | API documentation |
 
+### Example: Chat Request
 ```bash
-python src/main.py
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Analyze the trends in my data", "with_critique": true}'
 ```
 
-Then, open your browser to `http://localhost:8000`.
+### Example: MCP Tool Call
+```bash
+curl -X POST http://localhost:8000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/list",
+    "id": 1,
+    "params": {}
+  }'
+```
 
-### Docker
-
-After running the Docker container, open your browser to `http://localhost:8000`.
-
-## Project Structure
+## 🏗️ Architecture
 
 ```
-.
-├── data/
-│   ├── documents/    # Store documents for RAG
-│   └── database.db   # SQLite database
+┌─────────────────────────────────────────────────────────────┐
+│                    Web Interface                            │
+│              (Real-time Insights Dashboard)                 │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                  FastAPI Server                             │
+│         (/chat, /insights, /mcp, /tools)                    │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                  AgenticRAG Core                            │
+│  ┌─────────────┐ ┌──────────────┐ ┌──────────────────────┐  │
+│  │ OpenRouter  │ │ MCP Server   │ │ Insight Generator    │  │
+│  │ LLM Client  │ │ (Tools/Res)  │ │ (Analytics)          │  │
+│  └─────────────┘ └──────────────┘ └──────────────────────┘  │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                    ReAct Agent                          │ │
+│  │    (Reasoning + Acting with Tool Orchestration)         │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                   Critic Agent                          │ │
+│  │        (Quality Evaluation & Refinement)                │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                      Tools Layer                            │
+│  ┌──────┐ ┌──────┐ ┌──────────┐ ┌─────┐ ┌────────────────┐  │
+│  │ RAG  │ │ SQL  │ │Calculator│ │ API │ │ Insights Tool  │  │
+│  └──────┘ └──────┘ └──────────┘ └─────┘ └────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 📁 Project Structure
+
+```
+Agentic-RAG/
 ├── src/
-│   ├── tools/
-│   │   ├── rag_tool.py
-│   │   ├── sql_tool.py
-│   │   ├── calculator_tool.py
-│   │   └── api_tool.py
-│   ├── agent.py      # Main agent implementation
-│   └── main.py       # FastAPI server
-├── index.html        # Web interface
+│   ├── agent.py          # Main AgenticRAG with OpenRouter
+│   ├── main.py           # FastAPI server with MCP
+│   ├── mcp_server.py     # MCP protocol implementation
+│   └── tools/
+│       ├── __init__.py
+│       ├── rag_tool.py       # Document search
+│       ├── sql_tool.py       # Database queries
+│       ├── calculator_tool.py # Math operations
+│       ├── api_tool.py       # HTTP requests
+│       └── insights_tool.py  # Data analytics
+├── data/
+│   ├── documents/        # Documents for RAG
+│   ├── vector_store/     # ChromaDB embeddings
+│   └── database.db       # SQLite database
+├── .env                  # API configuration
+├── index.html            # Web interface
 ├── requirements.txt
 ├── Dockerfile
 └── README.md
 ```
 
-## Tools
+## 🎯 Why This Project?
 
-1. **RAG Tool**: Vector similarity search through documents, with document loading and indexing.
-2. **SQL Tool**: Execute queries on SQLite database.
-3. **Calculator Tool**: Perform mathematical calculations.
-4. **API Tool**: Make external API calls with robust parameter parsing and authentication.
+### The Problem
+Traditional chatbots and RAG systems often provide:
+- Raw data without context or actionable insights
+- No quality assurance on generated responses
+- Limited tool integration capabilities
+- No analytics on usage patterns
 
-## Contributing
+### The Solution
+This Agentic RAG system addresses these issues by:
 
-Feel free to submit issues and enhancement requests!
+1. **Generating Meaningful Insights**: Not just answering questions, but analyzing patterns, detecting trends, and providing recommendations
+2. **Quality Assurance**: Built-in critic agent evaluates every response for accuracy, relevance, and completeness
+3. **MCP Integration**: Standardized protocol for tool orchestration, making it extensible and interoperable
+4. **Free & Accessible**: Powered by OpenRouter's free tier, making advanced AI accessible to everyone
+
+### Use Cases
+- **Research Assistance**: Analyze documents and extract key insights
+- **Data Analysis**: Statistical analysis with trend detection and recommendations
+- **Knowledge Management**: Build and query your own knowledge base
+- **API Orchestration**: Coordinate multiple data sources through a single interface
+
+## 🔐 Security Note
+
+The `.env` file contains your OpenRouter API key. Make sure to:
+- Never commit `.env` to public repositories
+- Rotate your API key if exposed
+- Use environment variables in production
+
+## 📄 License
+
+MIT License - feel free to use and modify!
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
