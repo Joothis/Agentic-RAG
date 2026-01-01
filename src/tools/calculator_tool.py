@@ -40,4 +40,4 @@ class CalculatorTool(BaseTool):
 
     async def _arun(self, expression: str) -> Union[float, str]:
         """Async implementation of run"""
-        raise NotImplementedError("CalculatorTool does not support async")
+        return self._run(expression)

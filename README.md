@@ -55,6 +55,7 @@ pip install -r requirements.txt
 # - google/gemma-2-9b-it:free (Fast responses)
 ```
 
+<<<<<<< HEAD
 3. **Create data directories:**
 ```bash
 mkdir -p data/documents data/vector_store
@@ -64,6 +65,48 @@ mkdir -p data/documents data/vector_store
 ```bash
 cd src
 python main.py
+=======
+### Docker Installation (Recommended)
+
+**Prerequisites:**
+- Docker and Docker Compose installed on your system
+- Ollama running on your host machine with a model downloaded
+
+1. **Start Ollama on your host machine:**
+
+```bash
+ollama serve
+```
+
+2. **Pull a model (e.g., Mistral):**
+
+```bash
+ollama pull mistral
+```
+
+3. **Build and run using Docker Compose:**
+
+```bash
+docker-compose up --build
+```
+
+This will build the image and start the container. The application will be available at `http://localhost:8000`.
+
+4. **To stop the container:**
+
+```bash
+docker-compose down
+```
+
+**Alternative: Using Docker directly:**
+
+```bash
+# Build the image
+docker build -t agentic-rag .
+
+# Run the container (ensure Ollama is running on host)
+docker run -p 8000:8000 -e OLLAMA_BASE_URL=http://host.docker.internal:11434 agentic-rag
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
 ```
 
 5. **Open your browser:**
@@ -85,9 +128,13 @@ http://localhost:8000
 
 ### Example: Chat Request
 ```bash
+<<<<<<< HEAD
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "Analyze the trends in my data", "with_critique": true}'
+=======
+uvicorn src.main:app --host 0.0.0.0 --port 8000
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
 ```
 
 ### Example: MCP Tool Call
@@ -101,7 +148,15 @@ curl -X POST http://localhost:8000/mcp \
   }'
 ```
 
+<<<<<<< HEAD
 ## 🏗️ Architecture
+=======
+### Docker
+
+After running `docker-compose up --build`, open your browser to `http://localhost:8000`.
+
+## Project Structure
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

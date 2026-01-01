@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>Agentic RAG - AI Research Assistant</title>
+=======
+    <title>Advanced Agentic RAG Chatbot</title>
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
     <style>
         * {
             box-sizing: border-box;
@@ -11,6 +15,7 @@
             padding: 0;
         }
 
+<<<<<<< HEAD
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -19,6 +24,15 @@
         }
 
         .app-container {
+=======
+        .chat-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            height: 700px;
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
             display: flex;
             flex-direction: column;
             height: 100vh;
@@ -74,6 +88,12 @@
             overflow-y: auto;
         }
 
+        .chat-header .subtitle {
+            font-size: 0.7em;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
         .chat-messages {
             flex: 1;
             padding: 20px;
@@ -85,6 +105,7 @@
 
         .message {
             max-width: 85%;
+<<<<<<< HEAD
             padding: 12px 18px;
             border-radius: 16px;
             line-height: 1.5;
@@ -94,6 +115,15 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+=======
+            padding: 10px 15px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInSlideUp 0.3s ease-out forwards;
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
         }
 
         .message.user {
@@ -126,18 +156,113 @@
             gap: 10px;
         }
 
+        .message.thinking {
+            align-self: flex-start;
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            font-style: italic;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Thinking animation */
+        .thinking-dots {
+            display: inline-block;
+        }
+
+        .thinking-dots::after {
+            content: '';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Reasoning display */
+        .reasoning-toggle {
+            font-size: 0.75em;
+            color: #666;
+            cursor: pointer;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .reasoning-toggle:hover {
+            color: #4CAF50;
+        }
+
+        .reasoning-steps {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.85em;
+        }
+
+        .reasoning-steps.visible {
+            display: block;
+        }
+
+        .reasoning-step {
+            padding: 4px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .reasoning-step:last-child {
+            border-bottom: none;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
+
+        .confidence-high { background-color: #d4edda; color: #155724; }
+        .confidence-medium { background-color: #fff3cd; color: #856404; }
+        .confidence-low { background-color: #f8d7da; color: #721c24; }
+
         .chat-input {
+<<<<<<< HEAD
             flex: 1;
             padding: 15px 20px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 25px;
             background: rgba(255, 255, 255, 0.05);
             color: white;
+=======
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            gap: 10px;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 10px 15px;
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
             font-size: 1em;
             outline: none;
             transition: border-color 0.3s;
         }
 
+<<<<<<< HEAD
         .chat-input:focus {
             border-color: #7c3aed;
         }
@@ -152,11 +277,29 @@
             border-radius: 25px;
             background: linear-gradient(135deg, #7c3aed, #5b21b6);
             color: white;
+=======
+        .chat-input input:focus {
+            border-color: #4CAF50;
+        }
+
+        .chat-input input:disabled {
+            background-color: #f5f5f5;
+        }
+
+        .chat-input button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
             font-size: 1em;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
+<<<<<<< HEAD
         .send-btn:hover {
             transform: scale(1.05);
             box-shadow: 0 5px 20px rgba(124, 58, 237, 0.4);
@@ -273,10 +416,43 @@
             .insights-section {
                 max-height: 200px;
             }
+=======
+        .chat-input button:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+
+        .chat-input button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        @keyframes fadeInSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chat-header { font-size: 1em; padding: 10px; }
+            .chat-messages { padding: 10px; }
+            .message { padding: 8px 12px; font-size: 0.9em; }
+            .chat-input { padding: 10px; }
+            .chat-input input { padding: 8px 12px; font-size: 0.9em; }
+            .chat-input button { padding: 8px 12px; font-size: 0.9em; }
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
         }
     </style>
 </head>
 <body>
+<<<<<<< HEAD
     <div class="app-container">
         <div class="header">
             <h1>🤖 Agentic RAG System</h1>
@@ -346,12 +522,28 @@
                 
                 <button class="refresh-btn" id="refresh-insights">🔄 Refresh Insights</button>
             </div>
+=======
+    <div class="chat-container">
+        <div class="chat-header">
+            🧠 Advanced Agentic RAG
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot">
+                Hello! I'm an Advanced Agentic RAG Chatbot.<br />
+                How can I help you today?
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Ask me anything...">
+            <button id="send-button">Send</button>
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
         </div>
     </div>
 
     <script>
         const chatMessages = document.getElementById('chat-messages');
         const userInput = document.getElementById('user-input');
+<<<<<<< HEAD
         const sendBtn = document.getElementById('send-btn');
         let queryCount = 0;
 
@@ -381,21 +573,108 @@
         function removeLoadingMessage() {
             const loadingMsg = document.getElementById('loading-message');
             if (loadingMsg) loadingMsg.remove();
+=======
+        const sendButton = document.getElementById('send-button');
+        let isProcessing = false;
+
+        function getConfidenceClass(confidence) {
+            if (confidence >= 0.7) return 'confidence-high';
+            if (confidence >= 0.4) return 'confidence-medium';
+            return 'confidence-low';
+        }
+
+        function addMessage(text, sender, reasoning = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+
+            // Main message text
+            const textSpan = document.createElement('span');
+            textSpan.textContent = text;
+            messageDiv.appendChild(textSpan);
+
+            // Add reasoning toggle if available
+            if (reasoning && reasoning.length > 0) {
+                const toggleDiv = document.createElement('div');
+                toggleDiv.classList.add('reasoning-toggle');
+                toggleDiv.innerHTML = '🔍 Show reasoning steps';
+
+                const reasoningDiv = document.createElement('div');
+                reasoningDiv.classList.add('reasoning-steps');
+
+                reasoning.forEach(step => {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.classList.add('reasoning-step');
+                    const confClass = getConfidenceClass(step.confidence);
+                    stepDiv.innerHTML = `
+                        <strong>Step ${step.step_number}:</strong> ${step.thought}
+                        <span class="confidence-badge ${confClass}">${(step.confidence * 100).toFixed(0)}%</span>
+                    `;
+                    reasoningDiv.appendChild(stepDiv);
+                });
+
+                toggleDiv.addEventListener('click', () => {
+                    reasoningDiv.classList.toggle('visible');
+                    toggleDiv.innerHTML = reasoningDiv.classList.contains('visible')
+                        ? '🔍 Hide reasoning steps'
+                        : '🔍 Show reasoning steps';
+                });
+
+                messageDiv.appendChild(toggleDiv);
+                messageDiv.appendChild(reasoningDiv);
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            return messageDiv;
+        }
+
+        function addThinkingMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'thinking');
+            messageDiv.id = 'thinking-message';
+            messageDiv.innerHTML = '🤔 Thinking<span class="thinking-dots"></span>';
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        function removeThinkingMessage() {
+            const thinking = document.getElementById('thinking-message');
+            if (thinking) thinking.remove();
+        }
+
+        function setProcessing(processing) {
+            isProcessing = processing;
+            userInput.disabled = processing;
+            sendButton.disabled = processing;
+            sendButton.textContent = processing ? '...' : 'Send';
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
         }
 
         async function sendMessage() {
             const messageText = userInput.value.trim();
+<<<<<<< HEAD
             if (!messageText) return;
 
             addMessage(messageText, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
             addLoadingMessage();
+=======
+            if (!messageText || isProcessing) return;
+
+            addMessage(messageText, 'user');
+            userInput.value = '';
+            setProcessing(true);
+            addThinkingMessage();
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
 
             try {
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+<<<<<<< HEAD
                     body: JSON.stringify({ message: messageText, with_critique: true }),
                 });
 
@@ -479,6 +758,47 @@
 
         // Initial load
         fetchTools();
+=======
+                    body: JSON.stringify({
+                        message: messageText,
+                        include_reasoning: true
+                    }),
+                });
+
+                const data = await response.json();
+                removeThinkingMessage();
+
+                if (data.status === 'error') {
+                    const errorDiv = addMessage(data.response, 'bot');
+                    errorDiv.classList.add('error');
+                } else {
+                    addMessage(data.response, 'bot', data.reasoning_steps);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                removeThinkingMessage();
+                const errorDiv = addMessage('Sorry, something went wrong. Please try again.', 'bot');
+                errorDiv.classList.add('error');
+            } finally {
+                setProcessing(false);
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Health check on load
+        fetch('/health')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'healthy') {
+                    addMessage('⚠️ Warning: Agent is not fully initialized. Some features may not work.', 'bot');
+                }
+            })
+            .catch(() => {});
+>>>>>>> fd6723c4cf0be401d45adfc5dda51fc42e927cfc
     </script>
 </body>
 </html>
